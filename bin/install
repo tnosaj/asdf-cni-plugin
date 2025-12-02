@@ -1,11 +1,45 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
-current_script_path=${BASH_SOURCE[0]}
-plugin_dir=$(dirname "$(dirname "$current_script_path")")
+: "${ASDF_INSTALL_VERSION:?ASDF_INSTALL_VERSION is required}"
+: "${ASDF_INSTALL_PATH:?ASDF_INSTALL_PATH is required}"
 
-# shellcheck source=./lib/utils.bash
-source "${plugin_dir}/lib/utils.bash"
+mkdir -p "${ASDF_INSTALL_PATH}"
 
-install_version "$ASDF_INSTALL_TYPE" "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH"
+# If download step ran, use its contents
+if [ -n "${ASDF_DOWNLOAD_PATH:-}" ] && [ -d "${ASDF_DOWNLOAD_PATH}" ]; then
+  if [ -n "$(ls -A "${ASDF_DOWNLOAD_PATH}")" ]; then
+    echo "Copying CNI plugin binaries from ${ASDF_DOWNLOAD_PATH} to ${ASDF_INSTALL_PATH} ..."
+    cp -a "${ASDF_DOWNLOAD_PATH}/." "${ASDF_INSTALL_PATH}/"
+  fi
+fi
+
+# Fallback: download directly here if ASDF_DOWNLOAD_PATH is empty/missing
+if [ -z "$(ls -A "${ASDF_INSTALL_PATH}")" ]; then
+  echo "ASDF_DOWNLOAD_PATH is empty; downloading directly in install script..." >&2
+
+  export ASDF_DOWNLOAD_PATH="${ASDF_INSTALL_PATH}/.download"
+  mkdir -p "${ASDF_DOWNLOAD_PATH}"
+  "${ASDF_PLUGIN_PATH}/bin/download"
+
+  cp -a "${ASDF_DOWNLOAD_PATH}/." "${ASDF_INSTALL_PATH}/"
+  rm -rf "${ASDF_DOWNLOAD_PATH}"
+fi
+
+# Create a bin/ directory with symlinks so asdf can generate shims
+mkdir -p "${ASDF_INSTALL_PATH}/bin"
+
+for f in "${ASDF_INSTALL_PATH}"/*; do
+  [ -f "$f" ] || continue  # skip dirs
+  base="$(basename "$f")"
+
+  # Avoid recursing into bin/ or re-linking
+  if [ "$base" = "bin" ]; then
+    continue
+  fi
+
+  ln -s "../${base}" "${ASDF_INSTALL_PATH}/bin/${base}" 2>/dev/null || true
+done
+
+echo "Installed CNI plugins ${ASDF_INSTALL_VERSION} into ${ASDF_INSTALL_PATH}"
+

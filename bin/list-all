@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
-current_script_path=${BASH_SOURCE[0]}
-plugin_dir=$(dirname "$(dirname "$current_script_path")")
+REPO_URL="https://github.com/containernetworking/plugins.git"
 
-# shellcheck source=./lib/utils.bash
-source "${plugin_dir}/lib/utils.bash"
+# List tags like v1.8.0, strip `refs/tags/` and leading `v`,
+# then sort them semver-ish and output as space-separated list.
+git ls-remote --tags --refs "$REPO_URL" 'v*' \
+  | awk '{print $2}' \
+  | sed 's#refs/tags/v##' \
+  | sort -t. -k1,1n -k2,2n -k3,3n \
+  | tr '\n' ' ' | sed 's/ $//'
 
-list_all_versions | sort_versions | xargs echo
