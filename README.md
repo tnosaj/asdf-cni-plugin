@@ -5,7 +5,7 @@ asdf plugin for [containernetworking/plugins](https://github.com/containernetwor
 ## Install
 
 ```bash
-asdf plugin add cni-plugins https://github.com/<you>/asdf-cni-plugins.git
+asdf plugin add cni-plugins https://github.com/tnosaj/asdf-cni-plugins.git
 asdf list-all cni-plugins
 asdf install cni-plugins 1.8.0
 asdf global cni-plugins 1.8.0
